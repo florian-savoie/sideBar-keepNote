@@ -103,3 +103,42 @@ body {
     border: none;
   }
 }
+
+.ProseMirror {
+  min-height: 200px;
+  outline: none;
+}
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #adb5bd;
+  pointer-events: none;
+  height: 0;
+}
+.ProseMirror pre {
+  background-color: #000;
+  color: #fff;
+  padding: 0.75em 1em;
+  border-radius: 0.5em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  overflow-x: auto;
+}
+.ProseMirror mark {
+  border-radius: 0.25em;
+  padding: 0.1em 0.2em;
+}
+.ProseMirror .code-block {
+  background-color: #000;
+  color: #fff;
+  border-radius: 0.5em;
+  font-family: 'JetBrains Mono', monospace;
+}
+code{
+  background-color: #000;
+  color: #fff;
+  border-radius: 0.5em;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 5px 15px; /* padding vertical (haut et bas) de 5px, padding horizontal (gauche et droite) de 10px */
+
+}
