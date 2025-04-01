@@ -29,9 +29,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { useState, useEffect } from 'react';
+import { Notes } from "@/types/types";
 
 // Sample data structure
-const data = {
+const initialData = {
   versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
   navMain: [
     {
@@ -55,17 +57,67 @@ const data = {
       url: "#",
       canAdd: true,
       items: [
-        { title: "Mes Notes", url: "/notes" }
+       
       ],
     }
   ]
 }
 
+interface Note {
+  title: string;
+  // Ajoutez d'autres propriétés si elles existent dans vos notes
+}
+
+interface NoteItem {
+  title: string;
+  url: string;
+  isActive?: boolean;
+}
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [navData, setNavData] = useState<typeof initialData>(initialData);
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      try {
+        const notesRes = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/listeNotes`);
+        if (!notesRes.ok) throw new Error('Erreur de chargement des notes');
+        const notesData = await notesRes.json();
+        
+        if (Array.isArray(notesData.notes)) {
+          // Create note items from the API data
+          const noteItems: NoteItem[] = notesData.notes.map((note: Note) => ({
+            title: note.title,
+            url: `/notes/${note.title}`
+          }));
+          
+          // Make a deep copy of the current navData
+          const updatedNavData = JSON.parse(JSON.stringify(navData));
+          
+          // Find the Notes section and update its items
+          const notesSection = updatedNavData.navMain.find((section: any) => section.title === "Notes");
+          if (notesSection) {
+            // Keep the "Mes Notes" item and add all the individual notes
+            notesSection.items = [
+              ...noteItems
+            ];
+          }
+          
+          // Update the state with the new data
+          setNavData(updatedNavData);
+        }
+      } catch (err) {
+        console.error('Error fetching notes:', err);
+      }
+    };
+  
+    fetchNotes();
+  }, []);
+
   return (
     <Sidebar {...props} className="flex flex-col h-screen">
       <SidebarHeader className="p-2 border-b">
-        <div className="flex items-center justify-center"style={{height: "45px"}}>
+        <div className="flex items-center justify-center" style={{height: "45px"}}>
            <div className="">
           test
         </div>
@@ -74,7 +126,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
 
       <SidebarContent className="flex-grow overflow-y-auto space-y-2 p-2">
-        {data.navMain.map((section) => (
+        {navData.navMain.map((section) => (
           <Collapsible key={section.title} defaultOpen={section.title === "Categories"}>
             <div className="flex items-center justify-between mb-2">
               <CollapsibleTrigger className="flex items-center hover:bg-accent hover:text-accent-foreground p-2 rounded-md transition-colors">
