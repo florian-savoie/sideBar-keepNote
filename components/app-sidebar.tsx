@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from 'react';
 import { Notes } from "@/types/types";
+import Color from "@tiptap/extension-color";
 
 // Sample data structure
 const initialData = {
@@ -57,7 +58,7 @@ const initialData = {
       url: "#",
       canAdd: true,
       items: [
-       
+
       ],
     }
   ]
@@ -65,15 +66,19 @@ const initialData = {
 
 interface Note {
   title: string;
+  icone?: string;
+  url: string;
+  color?: string; // Maintenant facultatif
   // Ajoutez d'autres propriétés si elles existent dans vos notes
 }
 
-interface NoteItem {
+type NoteItem = {
   title: string;
   url: string;
+  icone?: string;
+  color?: string; // Maintenant facultatif
   isActive?: boolean;
-}
-
+};
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [navData, setNavData] = useState<typeof initialData>(initialData);
 
@@ -83,26 +88,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         const notesRes = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/listeNotes`);
         if (!notesRes.ok) throw new Error('Erreur de chargement des notes');
         const notesData = await notesRes.json();
-        
+
         if (Array.isArray(notesData.notes)) {
           // Create note items from the API data
           const noteItems: NoteItem[] = notesData.notes.map((note: Note) => ({
             title: note.title,
             url: `/notes/${note.title}`
           }));
-          
+
           // Make a deep copy of the current navData
           const updatedNavData = JSON.parse(JSON.stringify(navData));
-          
+
           // Find the Notes section and update its items
           const notesSection = updatedNavData.navMain.find((section: any) => section.title === "Notes");
           if (notesSection) {
             // Keep the "Mes Notes" item and add all the individual notes
             notesSection.items = [
+              { title: "Ajouter un block Notes", icone: <NotebookPen />, url: "/addBlock", color: "red" },
               ...noteItems
             ];
           }
-          
+
           // Update the state with the new data
           setNavData(updatedNavData);
         }
@@ -110,19 +116,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         console.error('Error fetching notes:', err);
       }
     };
-  
+
     fetchNotes();
   }, []);
 
   return (
     <Sidebar {...props} className="flex flex-col h-screen">
       <SidebarHeader className="p-2 border-b">
-        <div className="flex items-center justify-center" style={{height: "45px"}}>
-           <div className="">
-          test
+        <div className="flex items-center justify-center" style={{ height: "45px" }}>
+          <div className="">
+            test
+          </div>
         </div>
-        </div>
-       
+
       </SidebarHeader>
 
       <SidebarContent className="flex-grow overflow-y-auto space-y-2 p-2">
@@ -133,11 +139,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <span className="font-medium mr-2">{section.title}</span>
                 <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
               </CollapsibleTrigger>
-              
+
               {section.canAdd && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="text-muted-foreground hover:text-foreground"
                   title={`Ajouter ${section.title.toLowerCase()}`}
                 >
@@ -147,20 +153,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
 
             <CollapsibleContent className="space-y-1 pl-4 pt-2">
-              {section.items.map((item) => (
-                <a
-                  key={item.title}
-                  href={item.url}
-                  className={`block px-2 py-1 rounded-md text-sm hover:bg-accent hover:text-accent-foreground transition-colors ${
-                    item.isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {item.title}
-                </a>
-              ))}
-            </CollapsibleContent>
+  {section.items.map((item: NoteItem) => (
+    <a
+      key={item.title}
+      href={item.url}
+      className={`flex items-center px-2 py-1 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+        item.isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+      }`}
+    >      <span>{item.title}</span>
+
+      {item.icone && (
+        <span className={`mr-2 text-${item.color ? item.color + "-500" : "inherit"} ms-2`}>
+          <i className={item.icone}>{item.icone}</i>
+        </span>
+      )}
+    </a>
+  ))}
+</CollapsibleContent>
           </Collapsible>
         ))}
       </SidebarContent>
