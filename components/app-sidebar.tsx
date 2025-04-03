@@ -1,139 +1,147 @@
-'use client';
-import type * as React from "react"
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger
-} from "@/components/ui/collapsible"
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Sidebar,
   SidebarContent,
-  SidebarHeader
-} from "@/components/ui/sidebar"
+  SidebarHeader,
+} from "@/components/ui/sidebar";
 import {
   ChevronDown,
   Plus,
   NotebookPen,
-  FolderPlus,
   User,
   Settings,
-  LogOut
-} from 'lucide-react'
-import { VersionSwitcher } from "./version-switcher"
-import { Button } from "@/components/ui/button"
+  LogOut,
+  FolderPlus,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
-import { useState, useEffect } from 'react';
-import { Notes } from "@/types/types";
-import Color from "@tiptap/extension-color";
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 
-// Sample data structure
-const initialData = {
-  versions: ["1.0.1", "1.1.0-alpha", "2.0.0-beta1"],
+// Interfaces pour les types de données
+interface Note {
+  id: number;
+  title: string;
+  url: string;
+  description?: string;
+  pathImage?: string | null;
+  pathType?: string;
+}
+
+interface NoteGroup {
+  id: number;
+  title: string;
+  notes: Note[];
+}
+
+interface NavItem {
+  title: string;
+  url: string;
+  icone?: reac;
+}
+
+interface NavSection {
+  title: string;
+  url: string;
+  canAdd: boolean;
+  items: NavItem[];
+  noteGroups?: NoteGroup[];
+}
+
+interface NavData {
+  navMain: NavSection[];
+}
+
+// Structure initiale des données
+const initialData: NavData = {
   navMain: [
     {
       title: "Categories",
       url: "#",
       canAdd: true,
-      items: [
-        { title: "Liste des categories", url: "/categories" }
-      ],
+      items: [{ title: "Liste des catégories", url: "/categories" }],
     },
     {
       title: "Sous Categories",
       url: "#",
       canAdd: true,
-      items: [
-        { title: "Liste des sous-categories", url: "/sous-categories" }
-      ],
+      items: [{ title: "Liste des sous-catégories", url: "/sous-categories" }],
     },
     {
       title: "Notes",
       url: "#",
       canAdd: true,
       items: [
-
+        { title: "Ajouter un block Notes", url: "/addBlock", icone: <NotebookPen /> },
       ],
-    }
-  ]
-}
-
-interface Note {
-  title: string;
-  icone?: string;
-  url: string;
-  color?: string; // Maintenant facultatif
-  // Ajoutez d'autres propriétés si elles existent dans vos notes
-}
-
-type NoteItem = {
-  title: string;
-  url: string;
-  icone?: string;
-  color?: string; // Maintenant facultatif
-  isActive?: boolean;
+      noteGroups: [],
+    },
+  ],
 };
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [navData, setNavData] = useState<typeof initialData>(initialData);
+
+// Typage des props du composant Sidebar
+interface AppSidebarProps {
+  className?: string;
+  [key: string]: any; // Pour accepter d'autres props passées au composant Sidebar
+}
+
+export function AppSidebar({ ...props }: AppSidebarProps) {
+  const [navData, setNavData] = useState<NavData>(initialData);
 
   useEffect(() => {
-    const fetchNotes = async () => {
+    const fetchData = async () => {
       try {
-        const notesRes = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/listeNotes`);
-        if (!notesRes.ok) throw new Error('Erreur de chargement des notes');
-        const notesData = await notesRes.json();
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/listeNotes`, {
+          credentials: "include", // Inclure les cookies pour l'authentification
+        });
+        if (!response.ok) throw new Error("Erreur lors de la récupération des noteGroups");
 
-        if (Array.isArray(notesData.notes)) {
-          // Create note items from the API data
-          const noteItems: NoteItem[] = notesData.notes.map((note: Note) => ({
-            title: note.title,
-            url: `/notes/${note.title}`
+        const data: { noteGroups: NoteGroup[] } = await response.json();
+
+        // Mettre à jour les données de navigation
+        const updatedNavData: NavData = { ...navData };
+        const notesSection = updatedNavData.navMain.find(
+          (section) => section.title === "Notes"
+        );
+        if (notesSection) {
+          notesSection.noteGroups = data.noteGroups.map((group) => ({
+            id: group.id,
+            title: group.title,
+            notes: group.notes,
           }));
-
-          // Make a deep copy of the current navData
-          const updatedNavData = JSON.parse(JSON.stringify(navData));
-
-          // Find the Notes section and update its items
-          const notesSection = updatedNavData.navMain.find((section: any) => section.title === "Notes");
-          if (notesSection) {
-            // Keep the "Mes Notes" item and add all the individual notes
-            notesSection.items = [
-              { title: "Ajouter un block Notes", icone: <NotebookPen />, url: "/addBlock", color: "red" },
-              ...noteItems
-            ];
-          }
-
-          // Update the state with the new data
-          setNavData(updatedNavData);
         }
-      } catch (err) {
-        console.error('Error fetching notes:', err);
+
+        setNavData(updatedNavData);
+      } catch (error) {
+        console.error("Erreur lors de la récupération des données:", error);
       }
     };
 
-    fetchNotes();
-  }, []);
+    fetchData();
+  }, []); // Ajout de navData comme dépendance pour éviter des problèmes de mise à jour
 
   return (
     <Sidebar {...props} className="flex flex-col h-screen">
       <SidebarHeader className="p-2 border-b">
         <div className="flex items-center justify-center" style={{ height: "45px" }}>
-          <div className="">
-            test
-          </div>
+          <div className="">test</div>
         </div>
-
       </SidebarHeader>
 
       <SidebarContent className="flex-grow overflow-y-auto space-y-2 p-2">
         {navData.navMain.map((section) => (
-          <Collapsible key={section.title} defaultOpen={section.title === "Categories"}>
+          <Collapsible key={section.title} defaultOpen={section.title === "Notes"}>
             <div className="flex items-center justify-between mb-2">
               <CollapsibleTrigger className="flex items-center hover:bg-accent hover:text-accent-foreground p-2 rounded-md transition-colors">
                 <span className="font-medium mr-2">{section.title}</span>
@@ -153,28 +161,58 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </div>
 
             <CollapsibleContent className="space-y-1 pl-4 pt-2">
-  {section.items.map((item: NoteItem) => (
-    <a
-      key={item.title}
-      href={item.url}
-      className={`flex items-center px-2 py-1 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
-        item.isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-      }`}
-    >      <span>{item.title}</span>
+              {/* Rendu des items statiques */}
+              {section.items.map((item) => (
+                <a
+                  key={item.title}
+                  href={item.url}
+                  className="flex items-center px-2 py-1 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+                >
+                  {item.icone && <span className="mr-2">{item.icone}</span>}
+                  <span>{item.title}</span>
+                </a>
+              ))}
 
-      {item.icone && (
-        <span className={`mr-2 text-${item.color ? item.color + "-500" : "inherit"} ms-2`}>
-          <i className={item.icone}>{item.icone}</i>
-        </span>
-      )}
-    </a>
-  ))}
-</CollapsibleContent>
+              {/* Rendu des noteGroups pour la section Notes */}
+              {section.title === "Notes" &&
+                section.noteGroups &&
+                section.noteGroups.map((group) => (
+                  <Collapsible key={`group-${group.id}`}>
+                    <CollapsibleTrigger className="flex items-center w-full px-2 py-1 rounded-md text-sm transition-colors hover:bg-accent hover:text-accent-foreground">
+                      <span className="flex-grow text-left">{group.title}</span>
+                      <ChevronDown className="h-3 w-3 transition-transform group-data-[state=open]:rotate-180" />
+                    </CollapsibleTrigger>
+
+                    <CollapsibleContent className="pl-4 space-y-1 pt-1">
+                    <Button size="sm" className="flex items-center" asChild>
+      <Link href={`/addBlock/${group.id}`} >
+        <Plus className="h-4 w-4 mr-2" />
+        <span>Ajouter une Note</span>
+      </Link>
+    </Button>
+                      {group.notes.map((note) => (
+                        <a
+                          key={`note-${note.id}`}
+                          href={note.url}
+                          className="flex items-center px-2 py-1 rounded-md text-xs transition-colors hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+                        >
+                          <span>{note.title}</span>
+                        </a>
+                      ))}
+                      {group.notes.length === 0 && (
+                        <div className="px-2 py-1 text-xs text-muted-foreground italic text-warning">
+                          Aucune note Actuellement
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+            </CollapsibleContent>
           </Collapsible>
         ))}
       </SidebarContent>
 
-      {/* Profile Section at the Bottom */}
+      {/* Section Profil */}
       <div className="border-t p-4">
         <DropdownMenu>
           <DropdownMenuTrigger className="w-full">
@@ -202,5 +240,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </DropdownMenu>
       </div>
     </Sidebar>
-  )
+  );
 }

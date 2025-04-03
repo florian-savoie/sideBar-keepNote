@@ -23,7 +23,7 @@ const noteSchema = z.object({
 
 type NoteFormData = z.infer<typeof noteSchema>;
 
-export default function AddNote() {
+export default function AddNote(props: { title: string }) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -93,7 +93,8 @@ export default function AddNote() {
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Ajouter une Note</CardTitle>
+          <CardTitle className="flex justify-center">Ajouter une Note dans <span className="text-primary">&nbsp;
+          {props.title} </span> </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
