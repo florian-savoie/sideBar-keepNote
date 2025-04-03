@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkles, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import SelectTypeHead from "../components/ui/SelectTypeHead";
 
 const noteSchema = z.object({
   title: z.string().min(3, "Le titre doit contenir au moins 3 caractères"),
@@ -152,6 +153,7 @@ export default function PostBlock() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="title" className="text-base">Titre de la catégorie</Label>
+                    <SelectTypeHead/>
                     <Input
                       id="title"
                       {...register("title")}

@@ -11,13 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, X, Link } from "lucide-react";
+import SelectTypeHead from "../components/ui/SelectTypeHead";  // Assurez-vous que le chemin est correct
 
 // 🛠️ Schéma de validation avec Zod
 const noteSchema = z.object({
   title: z.string().min(3, "Le titre doit contenir au moins 3 caractères"),
   description: z.string().min(10, "La description est trop courte"),
   creator: z.string().min(3, "Le pseudo est requis"),
-  imageUrl: z.string().url().optional(),
+  categoryId: z.number().optional(),
+  imageUrl: z.string().url().optional().or(z.string().length(0)),
   imageFile: z.instanceof(File).optional(),
 });
 
@@ -26,15 +28,23 @@ type NoteFormData = z.infer<typeof noteSchema>;
 export default function AddNote(props: { title: string }) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categorieNotes, setCategorieNotes] = useState<string | null>(props.title || null);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<NoteFormData>({
     resolver: zodResolver(noteSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      creator: "",
+      imageUrl: "",
+    }
   });
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +78,10 @@ export default function AddNote(props: { title: string }) {
     formData.append("title", data.title);
     formData.append("description", data.description);
     formData.append("creator", data.creator);
+    
+    if (data.categoryId) {
+      formData.append("categoryId", data.categoryId.toString());
+    }
 
     if (imageFile) formData.append("imageFile", imageFile);
     else if (data.imageUrl) formData.append("imageUrl", data.imageUrl);
@@ -80,12 +94,18 @@ export default function AddNote(props: { title: string }) {
 
       if (response.ok) {
         alert("Note ajoutée avec succès !");
+        // Réinitialiser le formulaire
+        setImageFile(null);
+        setImagePreview(null);
+        setSelectedCategory(null);
+        // Vous pourriez aussi utiliser reset() de react-hook-form
       } else {
-        alert("Erreur lors de l'ajout de la note");
+        const errorData = await response.json();
+        alert(`Erreur lors de l'ajout de la note: ${errorData.message || 'Erreur inconnue'}`);
       }
     } catch (error) {
       console.error("Erreur:", error);
-      alert("Une erreur est survenue");
+      alert("Une erreur est survenue lors de la communication avec le serveur");
     }
   };
 
@@ -93,11 +113,33 @@ export default function AddNote(props: { title: string }) {
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle className="flex justify-center">Ajouter une Note dans <span className="text-primary">&nbsp;
-          {props.title} </span> </CardTitle>
+          <CardTitle className="flex justify-center">
+            Ajouter une Note dans <span className="text-primary">&nbsp;{categorieNotes} </span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {/* Catégorie avec SelectTypeHead */}
+            <div>
+            <SelectTypeHead
+  label="Catégorie"
+  placeholder={`Categorie ${props.title}`}
+  onSelect={(item) => {
+    if (item) {
+      setValue("categoryId", item.id);
+      setCategorieNotes( item.name);
+      setSelectedCategory(item.name);
+    } else {
+      setValue("categoryId", undefined);
+      setSelectedCategory(null);
+    }
+  }}
+/>
+              {selectedCategory && (
+                <p className="mt-1 text-sm text-primary">Catégorie sélectionnée: {selectedCategory}</p>
+              )}
+            </div>
+
             {/* Image Upload or URL */}
             <div>
               <Label>Image</Label>
@@ -211,8 +253,8 @@ export default function AddNote(props: { title: string }) {
             </div>
 
             {/* Submit Button */}
-            <Button type="submit" className="w-full">
-              Ajouter la note
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Chargement..." : "Ajouter la note"}
             </Button>
           </form>
         </CardContent>
