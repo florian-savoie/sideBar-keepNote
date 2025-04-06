@@ -24,7 +24,7 @@ export default function LogoutButton() {
 
   return (
     <>
-    <span  onClick={handleLogout} className='flex'>
+    <span  onClick={handleLogout} className='flex' style={{ cursor: 'pointer' }}>
           <LogOut size={20} className="mr-2 text-destructive" />
     <span className="text-destructive">Deconnexion</span>
     </span>

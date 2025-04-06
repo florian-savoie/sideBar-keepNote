@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sparkles, CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import SelectTypeHead from "../components/ui/SelectTypeHead";
+import { useSearchParams } from 'next/navigation';
+import Navbar from "../components/Navbar";
 
 const noteSchema = z.object({
   title: z.string().min(3, "Le titre doit contenir au moins 3 caractères"),
@@ -28,38 +29,43 @@ export default function PostBlock() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [categorieData, setCategorieData] = useState<CategorieData | null>(null);
   const router = useRouter();
-  const id = typeof window !== "undefined" ? window.location.pathname.split("/").pop() : null;
+  const searchParams = useSearchParams();
+  const id = searchParams.get('categorie'); // Récupère ?categorie=2
 
   useEffect(() => {
-    if (!id) return;
+    console.log("Categorie ID from searchParams:", id); // Log pour vérifier la valeur
+    if (!id || isNaN(parseInt(id))) {
+      console.error("Invalid or missing categorie ID:", id);
+      return;
+    }
 
     const fetchData = async () => {
+      const url = `${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/get/${id}`;
+      console.log("Fetching URL:", url); // Log pour vérifier l'URL
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/get/${id}`, {
+        const response = await fetch(url, {
           credentials: "include",
         });
 
-        if (!response.ok) throw new Error("Erreur lors de la récupération des noteGroups");
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
 
-        // Adjust data parsing to match the API response format
         const responseData = await response.json();
-        console.log("Raw response data:", responseData);
-        // Check if the response is already in the expected format or nested
-        const data: CategorieData = responseData.id ? responseData : responseData.note;
+        const data: CategorieData = 'id' in responseData ? responseData : responseData.note;
         
         if (!data) {
           throw new Error("Format de données invalide");
         }
         
         setCategorieData(data);
-        console.log("Data fetched successfully:", data);
       } catch (error) {
         console.error("Erreur lors de la récupération des données:", error);
       }
     };
 
     fetchData();
-  }, [id]);
+  }, [searchParams]);
 
   const {
     register,
@@ -69,21 +75,26 @@ export default function PostBlock() {
   } = useForm<NoteFormData>({
     resolver: zodResolver(noteSchema),
     defaultValues: {
-      // Pre-fill the form with category data if it exists
       title: categorieData?.title || "",
-    }
+    },
   });
+
+  // Mettre à jour les valeurs du formulaire quand categorieData change
+  useEffect(() => {
+    if (categorieData) {
+      reset({ title: categorieData.title });
+    }
+  }, [categorieData, reset]);
 
   const onSubmit = async (data: NoteFormData) => {
     setIsSubmitting(true);
     try {
-      // Determine if we're creating a new category or updating an existing one
       const url = id 
-        ? `${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/categorieNotes/update/${id}`
-        : `${process.env.NEXT_PUBLIC_PATH_URL}/api/notes/categorieNotes/create`;
-      
+        ? `${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/update/${id}`
+        : `${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/create`;
+  
       const method = id ? "PUT" : "POST";
-      
+  
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -92,15 +103,19 @@ export default function PostBlock() {
         body: JSON.stringify(data),
         credentials: "include",
       });
-
+  
       if (response.ok) {
+        const responseData = await response.json();
+  
+        const createdId = responseData.noteGroup?.id;
+  
         setIsSuccess(true);
         reset();
+  
         setTimeout(() => {
           setIsSuccess(false);
-          // Redirect to categories list after success if needed
-          if (!id) {
-            router.push("/notes/categories");
+          if (!id && createdId) {
+            router.push(`/notes/categories/${createdId}`); // Redirection dynamique
           }
         }, 3000);
       } else {
@@ -114,14 +129,15 @@ export default function PostBlock() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-6xl">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+     <Navbar>
+        <div className="container mx-auto px-4 py-12 max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center h-full  ">
         <div className="order-2 md:order-1">
-          <Card className="border-0 shadow-lg">
+          <Card className="border-0 shadow-lg  ">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-5 w-5 text-purple-500" />
-                <span className="text-sm font-medium text-purple-500">
+                <Sparkles className="h-5 w-5  text-primary" />
+                <span className="text-sm font-medium text-primary">
                   {id ? "Modifier la catégorie" : "Nouvelle catégorie"}
                 </span>
               </div>
@@ -153,13 +169,11 @@ export default function PostBlock() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="title" className="text-base">Titre de la catégorie</Label>
-                    <SelectTypeHead/>
                     <Input
                       id="title"
                       {...register("title")}
                       placeholder="Ex: Projets personnels, Idées créatives..."
                       className="h-12 px-4 rounded-md border-gray-200 focus:ring-purple-500 focus:border-purple-500"
-                      defaultValue={categorieData?.title || ""}
                     />
                     {errors.title && (
                       <p className="text-red-500 text-sm mt-1">{errors.title.message}</p>
@@ -168,7 +182,7 @@ export default function PostBlock() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors"
+                    className="w-full h-12 bg-primary text-white rounded-md transition-colors"
                     disabled={isSubmitting}
                   >
                     {isSubmitting 
@@ -195,5 +209,7 @@ export default function PostBlock() {
         </div>
       </div>
     </div>
+     </Navbar>
+  
   );
 }

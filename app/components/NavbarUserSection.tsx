@@ -15,6 +15,7 @@ import {
   CreditCard, 
   HelpCircle 
 } from 'lucide-react';
+import LogoutButton from './LogoutButton';
 
 interface UserAvatarDropdownProps {
   user: {
@@ -81,8 +82,7 @@ export function UserAvatarDropdown({
           className="text-destructive focus:text-destructive"
           onClick={onLogout}
         >
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Déconnexion</span>
+          <LogoutButton/>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

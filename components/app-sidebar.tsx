@@ -185,7 +185,7 @@ export function AppSidebar({ ...props }: AppSidebarProps) {
 
                     <CollapsibleContent className="pl-4 space-y-1 pt-1">
                     <Button size="sm" className="flex items-center" asChild>
-      <Link href={`/addBlock/${group.id}`} >
+      <Link href={`/addBlock/notes?categorie=${group.id}`} >
         <Plus className="h-4 w-4 mr-2" />
         <span>Ajouter une Note</span>
       </Link>

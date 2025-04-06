@@ -30,7 +30,7 @@ export default function AddNote(props: { title: string }) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [categorieNotes, setCategorieNotes] = useState<string | null>(props.title || null);
-
+  console.log("Categorie Notes:", props.title); // Log pour vérifier la valeur
   const {
     register,
     handleSubmit,
@@ -114,7 +114,7 @@ export default function AddNote(props: { title: string }) {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex justify-center">
-            Ajouter une Note dans <span className="text-primary">&nbsp;{categorieNotes} </span>
+            Ajouter une Note dans <span className="text-primary">&nbsp;{props.title} </span>
           </CardTitle>
         </CardHeader>
         <CardContent>

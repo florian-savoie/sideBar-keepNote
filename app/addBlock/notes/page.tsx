@@ -1,60 +1,61 @@
 'use client'
+
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import Navbar from "../../components/Navbar";
-import PostBlock from "../page";
 import { useAlert } from "@/contexts/Alert";
 import PostArticle from "@/app/components/PostArticle";
+import { useSearchParams } from 'next/navigation';
+
 type CategorieData = {
   id: number;
   title: string;
 };
+
 export default function Dashboard() {
   const { addAlert } = useAlert();
   const [categorieData, setCategorieData] = useState<CategorieData | null>(null);
-  const id = typeof window !== "undefined" ? window.location.pathname.split("/").pop() : null;
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    const id = searchParams.get('categorie'); // On lit `id` à l'intérieur du useEffect
+
     if (!id) return;
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/get/${id}`, {
-          credentials: "include",
-        });
+        const response = await fetch(`${process.env.NEXT_PUBLIC_PATH_URL}/api/notesCategorie/get/${id}`);
+        console.log("Fetching URL:", response.url);
 
         if (!response.ok) throw new Error("Erreur lors de la récupération des noteGroups");
 
-        // Adjust data parsing to match the API response format
         const responseData = await response.json();
         console.log("Raw response data:", responseData);
-        // Check if the response is already in the expected format or nested
+
         const data: CategorieData = responseData.id ? responseData : responseData.note;
-        
+
         if (!data) {
           throw new Error("Format de données invalide");
         }
-        
+
         setCategorieData(data);
-        console.log("Data fetched successfully:", data);
+        console.log("Data fetched successfully:", categorieData);
       } catch (error) {
         console.error("Erreur lors de la récupération des données:", error);
+        addAlert("Erreur lors du chargement de la catégorie", "error");
       }
     };
 
     fetchData();
-  }, [id]);
+  }, [searchParams]); // <-- Important : met `searchParams` comme dépendance ici
 
-
-
-
-  return (<>
-  <Navbar>
-  <PostArticle title={categorieData?.title as string} />
-
-  </Navbar>
-
-  </>
-
+  return (
+    <Navbar>
+      {categorieData ? (
+        
+        <PostArticle title={categorieData.title} />
+      ) : (
+        <p>Chargement...</p>
+      )}
+    </Navbar>
   );
 }
