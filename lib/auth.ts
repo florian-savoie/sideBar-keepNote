@@ -15,8 +15,8 @@ export async function verifyPassword(password: string, hashedPassword: string) {
 }
 
 // Fonction pour créer une session et stocker un JWT dans un cookie
-export async function createSession(userId: number) {
-  const token = await new SignJWT({ userId })
+export async function createSession(userId: number,pseudo: string) {
+  const token = await new SignJWT({ userId, pseudo }) // Crée un JWT avec l'identifiant de l'utilisateur
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('24h')
     .sign(new TextEncoder().encode(JWT_SECRET));
@@ -45,7 +45,7 @@ export async function getSession() {
       token.value,
       new TextEncoder().encode(JWT_SECRET)
     );
-    return verified.payload as { userId: number }; // Renvoie l'identifiant de l'utilisateur
+    return verified.payload as { userId: number; pseudo: string };
   } catch {
     return null; // Si le JWT est invalide ou expiré, renvoie null
   }

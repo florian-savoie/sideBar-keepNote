@@ -52,7 +52,7 @@ export default function Dashboard() {
     <Navbar>
       {categorieData ? (
         
-        <PostArticle title={categorieData.title} />
+        <PostArticle title={categorieData.title} id={categorieData.id}/>
       ) : (
         <p>Chargement...</p>
       )}

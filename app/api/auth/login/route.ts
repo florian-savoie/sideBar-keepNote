@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    await createSession(user.id);
+    await createSession(user.id,user.pseudo);
 
     return NextResponse.json({ 
       message: 'Connexion réussie',

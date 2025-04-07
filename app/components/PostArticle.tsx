@@ -1,111 +1,140 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Upload, X, Link } from "lucide-react";
-import SelectTypeHead from "../components/ui/SelectTypeHead";  // Assurez-vous que le chemin est correct
+import SelectTypeHead from "../components/ui/SelectTypeHead";
+import TextareaCustom from "@/app/components/TextareaCustom";
 
-// 🛠️ Schéma de validation avec Zod
-const noteSchema = z.object({
-  title: z.string().min(3, "Le titre doit contenir au moins 3 caractères"),
-  description: z.string().min(10, "La description est trop courte"),
-  creator: z.string().min(3, "Le pseudo est requis"),
-  categoryId: z.number().optional(),
-  imageUrl: z.string().url().optional().or(z.string().length(0)),
-  imageFile: z.instanceof(File).optional(),
-});
-
-type NoteFormData = z.infer<typeof noteSchema>;
-
-export default function AddNote(props: { title: string }) {
+export default function AddNote(props: { title: string , id:number}) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [categorieNotes, setCategorieNotes] = useState<string | null>(props.title || null);
-  console.log("Categorie Notes:", props.title); // Log pour vérifier la valeur
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<NoteFormData>({
-    resolver: zodResolver(noteSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      creator: "",
-      imageUrl: "",
-    }
+  const [categorieNotes, setCategorieNotes] = useState<string | null>(
+    props.title || null
+  );
+
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    imageUrl: "",
+    noteGroupId: props.id || null,
   });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.title || formData.title.length < 3) {
+      newErrors.title = "Le titre doit contenir au moins 3 caractères";
+    }
+
+    if (!formData.description || formData.description.length < 10) {
+      newErrors.description = "La description est trop courte";
+    }
+
+
+
+    if (formData.imageUrl && !formData.imageUrl.startsWith("http")) {
+      newErrors.imageUrl = "L'URL doit être valide";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
-      setValue("imageFile", file);
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
-      setValue("imageUrl", ""); // Reset URL
+      setFormData({ ...formData, imageUrl: "" });
     }
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleImageUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setImagePreview(url);
-    setValue("imageUrl", url);
-    setImageFile(null); // Reset file upload
+    setFormData({ ...formData, imageUrl: url });
+    setImageFile(null);
   };
 
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    setValue("imageUrl", "");
-    setValue("imageFile", undefined);
+    setFormData({ ...formData, imageUrl: "" });
   };
 
-  const onSubmit = async (data: NoteFormData) => {
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    formData.append("creator", data.creator);
-    
-    if (data.categoryId) {
-      formData.append("categoryId", data.categoryId.toString());
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    const submitFormData = new FormData();
+    submitFormData.append("title", formData.title);
+    submitFormData.append("description", formData.description);
+
+    if (formData.noteGroupId !== null) {
+      submitFormData.append("noteGroupId", formData.noteGroupId.toString());
     }
 
-    if (imageFile) formData.append("imageFile", imageFile);
-    else if (data.imageUrl) formData.append("imageUrl", data.imageUrl);
+    if (imageFile) {
+      submitFormData.append("imageFile", imageFile);
+    } else if (formData.imageUrl) {
+      submitFormData.append("imageUrl", formData.imageUrl);
+    }
 
     try {
       const response = await fetch("/api/notes", {
         method: "POST",
-        body: formData,
+        body: submitFormData,
       });
 
       if (response.ok) {
         alert("Note ajoutée avec succès !");
-        // Réinitialiser le formulaire
         setImageFile(null);
         setImagePreview(null);
         setSelectedCategory(null);
-        // Vous pourriez aussi utiliser reset() de react-hook-form
+        setFormData({
+          title: "",
+          description: "",
+          imageUrl: "",
+          noteGroupId: null,
+        });
       } else {
         const errorData = await response.json();
-        alert(`Erreur lors de l'ajout de la note: ${errorData.message || 'Erreur inconnue'}`);
+        alert(
+          `Erreur lors de l'ajout de la note: ${
+            errorData.message || "Erreur inconnue"
+          }`
+        );
       }
     } catch (error) {
       console.error("Erreur:", error);
       alert("Une erreur est survenue lors de la communication avec le serveur");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -114,29 +143,32 @@ export default function AddNote(props: { title: string }) {
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle className="flex justify-center">
-            Ajouter une Note dans <span className="text-primary">&nbsp;{props.title} </span>
+            Ajouter une Note dans{" "}
+            <span className="text-primary">&nbsp;{props.title}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Catégorie avec SelectTypeHead */}
             <div>
-            <SelectTypeHead
-  label="Catégorie"
-  placeholder={`Categorie ${props.title}`}
-  onSelect={(item) => {
-    if (item) {
-      setValue("categoryId", item.id);
-      setCategorieNotes( item.name);
-      setSelectedCategory(item.name);
-    } else {
-      setValue("categoryId", undefined);
-      setSelectedCategory(null);
-    }
-  }}
-/>
+              <SelectTypeHead
+                label="Catégorie"
+                placeholder={`Categorie ${props.title}`}
+                onSelect={(item) => {
+                  if (item) {
+                    setFormData({ ...formData, noteGroupId: item.id });
+                    setCategorieNotes(item.name);
+                    setSelectedCategory(item.name);
+                  } else {
+                    setFormData({ ...formData, noteGroupId: null });
+                    setSelectedCategory(null);
+                  }
+                }}
+              />
               {selectedCategory && (
-                <p className="mt-1 text-sm text-primary">Catégorie sélectionnée: {selectedCategory}</p>
+                <p className="mt-1 text-sm text-primary">
+                  Catégorie sélectionnée: {selectedCategory}
+                </p>
               )}
             </div>
 
@@ -163,7 +195,6 @@ export default function AddNote(props: { title: string }) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {/* File Upload */}
                     <Label
                       htmlFor="image-upload"
                       className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -181,15 +212,14 @@ export default function AddNote(props: { title: string }) {
                       />
                     </Label>
 
-                    {/* OR */}
                     <div className="text-center text-gray-500">ou</div>
 
-                    {/* Image URL Input */}
                     <div className="relative">
                       <Input
                         type="text"
+                        name="imageUrl"
                         placeholder="Coller l'URL de l'image"
-                        {...register("imageUrl")}
+                        value={formData.imageUrl}
                         onChange={handleImageUrlChange}
                         className="pl-10"
                       />
@@ -200,7 +230,7 @@ export default function AddNote(props: { title: string }) {
                     </div>
                     {errors.imageUrl && (
                       <p className="text-red-500 text-sm">
-                        {errors.imageUrl.message}
+                        {errors.imageUrl}
                       </p>
                     )}
                   </div>
@@ -208,51 +238,38 @@ export default function AddNote(props: { title: string }) {
               </div>
             </div>
 
-            {/* Title Input */}
+            {/* Titre */}
             <div>
               <Label htmlFor="title">Titre</Label>
               <Input
                 id="title"
-                {...register("title")}
+                name="title"
+                value={formData.title}
+                onChange={handleInputChange}
                 placeholder="Titre de la note"
                 className="mt-2"
               />
               {errors.title && (
-                <p className="text-red-500 text-sm">{errors.title.message}</p>
+                <p className="text-red-500 text-sm">{errors.title}</p>
               )}
             </div>
 
-            {/* Description Textarea */}
+            {/* Description */}
             <div>
               <Label htmlFor="description">Description</Label>
-              <Textarea
+              <TextareaCustom
+                value={formData.description}
+                onChange={handleInputChange}
                 id="description"
-                {...register("description")}
-                placeholder="Contenu de la note..."
-                className="mt-2 min-h-[200px]"
+                name="description"
               />
               {errors.description && (
-                <p className="text-red-500 text-sm">
-                  {errors.description.message}
-                </p>
+                <p className="text-red-500 text-sm">{errors.description}</p>
               )}
             </div>
 
-            {/* Creator Pseudo */}
-            <div>
-              <Label htmlFor="creator">Pseudo du créateur</Label>
-              <Input
-                id="creator"
-                {...register("creator")}
-                placeholder="Votre pseudo"
-                className="mt-2"
-              />
-              {errors.creator && (
-                <p className="text-red-500 text-sm">{errors.creator.message}</p>
-              )}
-            </div>
-
-            {/* Submit Button */}
+        
+            {/* Submit */}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Chargement..." : "Ajouter la note"}
             </Button>
